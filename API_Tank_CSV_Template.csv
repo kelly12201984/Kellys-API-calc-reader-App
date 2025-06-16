@@ -1,0 +1,38 @@
+PDF Language (Calc),Estimation Language
+Tag ID,Quotation ID 
+Project,Project ID
+Design Basis,Design Standard 
+Annexes Used,Annexes Used
+Design Internal Pressure,Internal Pressure
+Design External Pressure,External Pressure
+D of Tank,Tank Diameter
+OD of Tank,Outside Diameter
+ID of Tank,Inside Diameter
+Shell Height,Shell Height
+S.G of Contents,Standard Gravity (SG) 
+Max Design Liq. Level,Liquid Level
+Design Temperature,Design Temperature
+MDMT (Minimum Design Metal Temperature),MDMT (Minimum Design Metal Temperature
+Roof Live Load,Roof Live Load
+"Design Wind Speed, V = Vg =",Wind Speed
+"Ss(g), S1 (g)",Seismic Design
+Material,Shell  Material
+t- Actual (in) ,Shell Course (n) Thickness
+Width (in),Shell  Size
+Shell # = greatest,Shell  Quantity
+Roof Type,Roof Type 
+Plates Material = ,Roof Material
+Roof t.actual ,Roof  Thickness
+Bottom Material,Bottom Material
+Bottom t.actual ,Bottom Thickness
+Top Member Material,Rim Angle Material
+Top Member Size,Rim Angle Size
+Anchors Quantity,Anchors Quantity
+Anchors Size,Anchors Size
+Anchors Material,Anchors Material
+c =,Top Plate Thickness (in)
+"a, b",Top Plate Size
+Anchors Quantity,Anchor Chair Quantity
+2 x Anchors Quantity,Vertical Plate Quantity 
+"h, b",Vertical Plate Size
+j =,Vertical Plate Thickness
