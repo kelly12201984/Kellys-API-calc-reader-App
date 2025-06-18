@@ -63,22 +63,20 @@ def extract_specs(text):
         if "Shell Width" in line:
             capture = True
             continue
-        if "Shell Weight" in line:
-            break
         if capture:
-            # Look for lines that start with a digit (Shell #) and a width
+            if "Shell Weight" in line or "Weight CA" in line:
+                break  # Stop capturing — we've entered the second table
+
             line = line.strip()
             if re.match(r"^\d+\s+\d+", line):
                 try:
                     width = int(re.findall(r"^\d+\s+(\d+)", line)[0])
-                    shell_widths.append(str(width))
+                    if 30 <= width <= 120:  # Extra safety: ignore bogus values like 982
+                        shell_widths.append(str(width))
                 except:
                     continue
 
-    if shell_widths:
-        specs["Shell - Size"] = ", ".join(shell_widths)
-    else:
-        specs["Shell - Size"] = "Not found"
+    specs["Shell - Size"] = ", ".join(shell_widths) if shell_widths else "Not found"
 
     # --- Shell - Quantity: Find the highest Shell (#) mentioned ---
     shell_course_numbers = re.findall(r"Shell\s*\((\d+)\)", text)
