@@ -6,14 +6,17 @@ import pandas as pd
 st.set_page_config(page_title="Tank Spec Reader")
 
 st.title("📄 API-650 Tank Spec Reader")
-st.markdown("Upload a tank calc PDF and I'll extract key details for you.")
+st.markdown(
+    "Toss in your tank calculation PDF and I'll get those key details you need."
+)
 
 uploaded_file = st.file_uploader("Upload a PDF file", type=["pdf"])
+
 
 def extract_specs(text):
     specs = {}
 
-        # --- Ordered Key Fields from mapping table ---
+    # --- Ordered Key Fields from mapping table ---
     ordered_fields = [
         ("Quotation No", r"Tag ID\s*[:=]?\s*([\w-]+)"),
         ("Project ID", r"Project\s*=\s*([^\n]+)"),
@@ -38,7 +41,9 @@ def extract_specs(text):
         specs[field] = match.group(1).strip() if match else "Not found"
 
     # --- Extract all Shell Course Thicknesses dynamically ---
-    shell_matches = re.findall(r"Shell\s*\((\d+)\)\s*[A-Z0-9\-]+\s*:\s*([\d.]+)\s*in", text)
+    shell_matches = re.findall(
+        r"Shell\s*\((\d+)\)\s*[A-Z0-9\-]+\s*:\s*([\d.]+)\s*in", text
+    )
     for course_num, thickness in shell_matches:
         specs[f"Shell Course {course_num} Thickness"] = f"{thickness} in"
 
@@ -50,20 +55,36 @@ def extract_specs(text):
     else:
         specs["Seismic Design"] = "Not found"
 
-    # --- Shell Material (your original working version) ---
-    match = re.search(r"Shell\s*\(1\)\s*[:=]?\s*([A-Z0-9-]+)", text)
-    specs["Shell Material"] = match.group(1) if match else "Not found"
-    
-    # --- Shell - Size: Extract just widths from shell course summary table ---
-    shell_size_matches = re.findall(r"(?m)^\s*\d+\s+([\d.]+)\s+(?:A240|A516|A36|[A-Z0-9-]+)", text) 
-    if shell_size_matches:specs["Shell - Size"] = ", ".join(shell_size_matches)
-    else: specs["Shell - Size"] = "Not found"
+    # --- Shell - Size: Extract widths from broken multi-line table ---
+    shell_widths = []
+    capture = False
+
+    for line in text.splitlines():
+        if "Shell Width" in line:
+            capture = True
+            continue
+        if "Shell Weight" in line:
+            break
+        if capture:
+            # Look for lines that start with a digit (Shell #) and a width
+            line = line.strip()
+            if re.match(r"^\d+\s+\d+", line):
+                try:
+                    width = int(re.findall(r"^\d+\s+(\d+)", line)[0])
+                    shell_widths.append(str(width))
+                except:
+                    continue
+
+    if shell_widths:
+        specs["Shell - Size"] = ", ".join(shell_widths)
+    else:
+        specs["Shell - Size"] = "Not found"
 
     # --- Shell - Quantity: Find the highest Shell (#) mentioned ---
     shell_course_numbers = re.findall(r"Shell\s*\((\d+)\)", text)
     if shell_course_numbers:
-        max_course = max(map(int, shell_course_numbers)) 
-        specs["Shell - Quantity"] = str(max_course) 
+        max_course = max(map(int, shell_course_numbers))
+        specs["Shell - Quantity"] = str(max_course)
     else:
         specs["Shell - Quantity"] = "Not found"
 
@@ -76,29 +97,37 @@ def extract_specs(text):
     specs["Roof Material"] = match.group(1).strip() if match else "Not found"
 
     # --- Roof Thickness (from Roof section's t.actual) ---
-    match = re.search(r"Roof.*?\bt\.actual\s*=\s*([\d.]+)\s*in", text, re.IGNORECASE | re.DOTALL)
+    match = re.search(
+        r"Roof.*?\bt\.actual\s*=\s*([\d.]+)\s*in", text, re.IGNORECASE | re.DOTALL
+    )
     specs["Roof Thickness"] = match.group(1) + " in" if match else "Not found"
-
 
     # --- Bottom Material ---
     match = re.search(r"Bottom Material\s*[:=]?\s*(.+)", text)
     specs["Bottom Material"] = match.group(1).strip() if match else "Not found"
 
     # --- Bottom Thickness (from Bottom section's t.actual) ---
-    match = re.search(r"Bottom.*?\bt\.actual\s*=\s*([\d.]+)\s*in", text, re.IGNORECASE | re.DOTALL)
+    match = re.search(
+        r"Bottom.*?\bt\.actual\s*=\s*([\d.]+)\s*in", text, re.IGNORECASE | re.DOTALL
+    )
     specs["Bottom Thickness"] = match.group(1) + " in" if match else "Not found"
 
     # --- Rim Angle Material (from Top Member section's Material) ---
-    match = re.search(r"Top Member.*?Material\s*=\s*([^\n]+)", text, re.IGNORECASE | re.DOTALL)
+    match = re.search(
+        r"Top Member.*?Material\s*=\s*([^\n]+)", text, re.IGNORECASE | re.DOTALL
+    )
     specs["Rim Angle Material"] = match.group(1).strip() if match else "Not found"
 
-
     # --- Rim Angle Size (from Top Member section's Size) ---
-    match = re.search(r"Top Member.*?Size\s*=\s*([^\n]+)", text, re.IGNORECASE | re.DOTALL)
+    match = re.search(
+        r"Top Member.*?Size\s*=\s*([^\n]+)", text, re.IGNORECASE | re.DOTALL
+    )
     specs["Rim Angle Size"] = match.group(1).strip() if match else "Not found"
 
     # --- Anchors Quantity (scoped to Anchors section) ---
-    match = re.search(r"Anchors.*?Quantity\s*=\s*(\d+)", text, re.IGNORECASE | re.DOTALL)
+    match = re.search(
+        r"Anchors.*?Quantity\s*=\s*(\d+)", text, re.IGNORECASE | re.DOTALL
+    )
     specs["Anchors Quantity"] = match.group(1) if match else "Not found"
 
     # --- Anchors Size ---
@@ -130,13 +159,16 @@ def extract_specs(text):
 
     # --- Vertical Plate Size (h, b) formatted as "__, __" ---
     h = re.search(r"h\s*=\s*([\d.]+)\s*in", text)
-    specs["Vertical Plate Size"] = f"{b.group(1)}, {h.group(1)}" if b and h else "Not found"
+    specs["Vertical Plate Size"] = (
+        f"{b.group(1)}, {h.group(1)}" if b and h else "Not found"
+    )
 
     # --- Vertical Plate Thickness (j) ---
     match = re.search(r"j\s*=\s*([\d.]+)\s*in", text)
     specs["Vertical Plate Thickness"] = match.group(1) if match else "Not found"
 
     return specs
+
 
 # --- Streamlit UI Output ---
 if uploaded_file:
@@ -166,12 +198,12 @@ if uploaded_file:
         filename_base = f"{quote_id}_{project_id}"
 
     # CSV Download
-    csv = df.to_csv(index=False).encode('utf-8')
+    csv = df.to_csv(index=False).encode("utf-8")
     st.download_button(
         label="⬇️ Download as CSV",
         data=csv,
         file_name=f"{filename_base}.csv",
-        mime="text/csv"
+        mime="text/csv",
     )
 
     st.markdown("---")
