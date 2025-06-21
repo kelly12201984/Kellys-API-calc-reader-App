@@ -1,4 +1,6 @@
 import re
+from collections import defaultdict
+import pandas as pd
 
 
 def extract_specs(text):
@@ -135,10 +137,79 @@ def extract_specs(text):
 
 
 def extract_nozzles(text):
-    # TODO: Implement nozzle extraction logic
-    return []
+    nozzle_blocks = re.findall(
+        r"(Roof Nozzle: Nozzle-\d+.*?)(?=Roof Nozzle:|Roof Manway:|$)", text, re.DOTALL
+    )
+    nozzle_data = defaultdict(
+        lambda: {
+            "QTY": 0,
+            "Repad Required": "No",
+            "Repad OD": "",
+            "Repad Thickness": "",
+        }
+    )
+
+    for block in nozzle_blocks:
+        size_match = re.search(
+            r"NOZZLE Description\s*:\s*(\d+) in SCH (\d+)[\S]* TYPE (\w+)", block
+        )
+        if not size_match:
+            continue
+        size, sch, typ = size_match.groups()
+        key = (size, sch, typ)
+
+        repad_required = "No Reinforcement Pad required" not in block
+        if repad_required:
+            repad_od = re.search(r"Repad Size \(OD\) Must be = (\d+\.?\d*) in", block)
+            repad_thk = re.search(r"t_rpr\s*=\s*([\d.]+)\s*in", block)
+            nozzle_data[key]["Repad Required"] = "Yes"
+            nozzle_data[key]["Repad OD"] = repad_od.group(1) if repad_od else ""
+            nozzle_data[key]["Repad Thickness"] = (
+                repad_thk.group(1) if repad_thk else ""
+            )
+        nozzle_data[key]["QTY"] += 1
+
+    results = []
+    for (size, sch, typ), info in nozzle_data.items():
+        results.append(
+            {
+                "QTY": info["QTY"],
+                "Size": f'{size}"',
+                "SCH": sch,
+                "Type": typ,
+                "Repad Required": info["Repad Required"],
+                "Repad OD (in)": info["Repad OD"],
+                "Repad Thickness (in)": info["Repad Thickness"],
+            }
+        )
+    return results
 
 
 def extract_manways(text):
-    # TODO: Implement manway extraction logic
-    return []
+    manway_match = re.search(
+        r"Roof Manway:.*?(MANWAY Description\s*:\s*(\d+).*?Neck Thickness\s*([\d.]+))",
+        text,
+        re.DOTALL,
+    )
+    if not manway_match:
+        return []
+
+    size = manway_match.group(2)
+    neck_thk = manway_match.group(3)
+    block = manway_match.group(1)
+
+    repad_required = "No Reinforcement Pad required" not in block
+    repad_od = re.search(r"Repad Size \(OD\) Must be = (\d+\.?\d*) in", block)
+    repad_thk = re.search(r"t_rpr\s*=\s*([\d.]+)\s*in", block)
+
+    return [
+        {
+            "QTY": 1,
+            "Size": f'{size}"',
+            "Neck Thickness (in)": neck_thk,
+            "Type": "",  # manually filled by Chris
+            "Repad Required": "Yes" if repad_required else "No",
+            "Repad OD (in)": repad_od.group(1) if repad_od else "",
+            "Repad Thickness (in)": repad_thk.group(1) if repad_thk else "",
+        }
+    ]

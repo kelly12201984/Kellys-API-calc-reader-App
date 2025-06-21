@@ -26,6 +26,23 @@ if uploaded_file:
     st.subheader("📋 Extracted Key Specs")
     df = pd.DataFrame(specs.items(), columns=["Field", "Value"])
     st.table(df)
+    # --- Nozzles Table ---
+    nozzles = extract_nozzles(full_text)
+    if nozzles:
+        st.subheader("🛠️ Nozzles (Roof & Shell)")
+        nozzle_df = pd.DataFrame(nozzles)
+        st.table(nozzle_df)
+    else:
+        st.info("No nozzles found.")
+
+    # --- Manway Table ---
+    manways = extract_manways(full_text)
+    if manways:
+        st.subheader("🛠️ Manway Nozzles")
+        manway_df = pd.DataFrame(manways)
+        st.table(manway_df)
+    else:
+        st.info("No manway nozzles found.")
 
     # --- Export Section ---
     st.markdown("### 📥 Export Extracted Data")
