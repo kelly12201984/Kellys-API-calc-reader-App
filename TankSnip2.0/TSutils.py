@@ -158,17 +158,21 @@ def extract_nozzles(text):
         size, sch, typ = size_match.groups()
         key = (size, sch, typ)
 
-        repad_required = "No Reinforcement Pad required" not in block
+        # Check repad requirement logic
+        has_repad_text = "Reinforcement Pad is required" in block
+        t_rpr_match = re.search(r"t_rpr\s*=\s*([\d.]+)\s*in", block)
+        t_rpr_val = float(t_rpr_match.group(1)) if t_rpr_match else 0
+        repad_required = has_repad_text and t_rpr_val > 0
+
         if repad_required:
             repad_od = re.search(r"Repad Size \(OD\) Must be = (\d+\.?\d*) in", block)
-            repad_thk = re.search(r"t_rpr\s*=\s*([\d.]+)\s*in", block)
             nozzle_data[key]["Repad Required"] = "Yes"
             nozzle_data[key]["Repad OD"] = repad_od.group(1) if repad_od else ""
-            nozzle_data[key]["Repad Thickness"] = (
-                repad_thk.group(1) if repad_thk else ""
-            )
+            nozzle_data[key]["Repad Thickness"] = f"{t_rpr_val:.4f}"
+
         nozzle_data[key]["QTY"] += 1
 
+    # Format results for DataFrame
     results = []
     for (size, sch, typ), info in nozzle_data.items():
         results.append(
@@ -186,30 +190,36 @@ def extract_nozzles(text):
 
 
 def extract_manways(text):
-    manway_match = re.search(
-        r"Roof Manway:.*?(MANWAY Description\s*:\s*(\d+).*?Neck Thickness\s*([\d.]+))",
-        text,
-        re.DOTALL,
-    )
+    # Grab the block starting at "Roof Manway:" through the next blank line or EOF
+    manway_match = re.search(r"(Roof Manway:.*?)(?=\n\s*\n|$)", text, re.DOTALL)
     if not manway_match:
         return []
 
-    size = manway_match.group(2)
-    neck_thk = manway_match.group(3)
     block = manway_match.group(1)
 
-    repad_required = "No Reinforcement Pad required" not in block
+    # Extract size and neck thickness
+    size_match = re.search(r"MANWAY Description\s*:\s*(\d+)", block)
+    neck_match = re.search(r"Neck Thickness\s*([\d.]+)", block)
+
+    size = size_match.group(1) if size_match else "Unknown"
+    neck_thk = neck_match.group(1) if neck_match else "Unknown"
+
+    # Repad logic (same structure as nozzle fix)
+    has_repad_text = "Reinforcement Pad is required" in block
+    t_rpr_match = re.search(r"t_rpr\s*=\s*([\d.]+)\s*in", block)
+    t_rpr_val = float(t_rpr_match.group(1)) if t_rpr_match else 0
+    repad_required = has_repad_text and t_rpr_val > 0
+
     repad_od = re.search(r"Repad Size \(OD\) Must be = (\d+\.?\d*) in", block)
-    repad_thk = re.search(r"t_rpr\s*=\s*([\d.]+)\s*in", block)
 
     return [
         {
             "QTY": 1,
             "Size": f'{size}"',
             "Neck Thickness (in)": neck_thk,
-            "Type": "",  # manually filled by Chris
+            "Type": "",  # Not in PDF
             "Repad Required": "Yes" if repad_required else "No",
             "Repad OD (in)": repad_od.group(1) if repad_od else "",
-            "Repad Thickness (in)": repad_thk.group(1) if repad_thk else "",
+            "Repad Thickness (in)": f"{t_rpr_val:.4f}" if repad_required else "",
         }
     ]
