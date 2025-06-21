@@ -22,19 +22,21 @@ if uploaded_file:
         full_text = "\n".join(page.extract_text() or "" for page in pdf.pages)
 
     specs = extract_specs(full_text)
+
     # --- Filename base from extracted specs ---
-quote_id = specs.get("Quotation No", "quote").replace(" ", "_").strip()
-project_id_raw = specs.get("Project ID", "").strip()
+    quote_id = specs.get("Quotation No", "quote").replace(" ", "_").strip()
+    project_id_raw = specs.get("Project ID", "").strip()
+    project_id = project_id_raw.replace(" ", "_")
+    if project_id_raw.lower() in ["not found", "", "none"]:
+        filename_base = quote_id
+    else:
+        filename_base = f"{quote_id}_{project_id}"
 
-project_id = project_id_raw.replace(" ", "_")
-if project_id_raw.lower() in ["not found", "", "none"]:
-    filename_base = quote_id
-else:
-    filename_base = f"{quote_id}_{project_id}"
-
+    # --- Display Spec Table ---
     st.subheader("📋 Extracted Key Specs")
     df = pd.DataFrame(specs.items(), columns=["Field", "Value"])
     st.table(df)
+
     # --- Nozzles Table ---
     nozzles = extract_nozzles(full_text)
     if nozzles:
@@ -48,7 +50,6 @@ else:
             file_name=f"{filename_base}_nozzles.csv",
             mime="text/csv",
         )
-
     else:
         st.info("No nozzles found.")
 
@@ -65,56 +66,40 @@ else:
             file_name=f"{filename_base}_manways.csv",
             mime="text/csv",
         )
-
     else:
         st.info("No manway nozzles found.")
 
+    # --- Combined Export Function ---
+    def create_combined_csv(specs_df, nozzle_df=None, manway_df=None):
+        parts = []
+        parts.append("=== TANK SPECS ===")
+        parts.append(specs_df.to_csv(index=False))
 
-def create_combined_csv(specs_df, nozzle_df=None, manway_df=None):
-    parts = []
+        if nozzle_df is not None and not nozzle_df.empty:
+            parts.append("\n=== NOZZLES (Roof & Shell) ===")
+            parts.append(nozzle_df.to_csv(index=False))
 
-    parts.append("=== TANK SPECS ===")
-    parts.append(specs_df.to_csv(index=False))
+        if manway_df is not None and not manway_df.empty:
+            parts.append("\n=== MANWAYS ===")
+            parts.append(manway_df.to_csv(index=False))
 
-    if nozzle_df is not None and not nozzle_df.empty:
-        parts.append("\n=== NOZZLES (Roof & Shell) ===")
-        parts.append(nozzle_df.to_csv(index=False))
+        return "\n".join(parts).encode("utf-8")
 
-    if manway_df is not None and not manway_df.empty:
-        parts.append("\n=== MANWAYS ===")
-        parts.append(manway_df.to_csv(index=False))
+    # --- Combined CSV Export ---
+    combined_csv = create_combined_csv(
+        df,
+        nozzle_df if "nozzle_df" in locals() else None,
+        manway_df if "manway_df" in locals() else None,
+    )
 
-    return "\n".join(parts).encode("utf-8")
+    st.download_button(
+        label="⬇️ Download All Data",
+        data=combined_csv,
+        file_name=f"{filename_base}.csv",
+        mime="text/csv",
+    )
 
-
-if "QuoteID" in df.columns:
-    quote_id = df["QuoteID"].iloc[0].strip().replace(" ", "_")
-    file_name = f"{quote_id}.csv"
-else:
-    file_name = "TankSnip_Export.csv"
-
-combined_csv = create_combined_csv(
-    df,
-    nozzle_df if "nozzle_df" in locals() else None,
-    manway_df if "manway_df" in locals() else None,
-)
-
-st.download_button(
-    label="⬇️ Download All Data", data=combined_csv, file_name=file_name, mime="text/csv"
-)
-
-# --- Build dynamic export filename ---
-quote_id = specs.get("Quotation No", "quote").replace(" ", "_").strip()
-project_id_raw = specs.get("Project ID", "").strip()
-
-# Normalize project_id
-project_id = project_id_raw.replace(" ", "_")
-if project_id_raw.lower() in ["not found", "", "none"]:
-    filename_base = quote_id
-else:
-    filename_base = f"{quote_id}_{project_id}"
-
-
-st.markdown("---")
-st.subheader("🔍 Full Raw Text (for reference)")
-st.text_area("PDF Text", full_text, height=400)
+    # --- Full Raw PDF Text Viewer ---
+    st.markdown("---")
+    st.subheader("🔍 Full Raw Text (for reference)")
+    st.text_area("PDF Text", full_text, height=400)
