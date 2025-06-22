@@ -137,6 +137,8 @@ def extract_specs(text):
 
 
 def get_nozzle_blind_flags(text):
+    import re
+
     lines = text.splitlines()
     blind_map = {}
     current_block = []
@@ -156,6 +158,9 @@ def get_nozzle_blind_flags(text):
 
             block_text = " ".join(current_block).upper()
             has_blind = "W/ BLIND" in block_text
+
+            # ✅ This is the correct debug line
+            print(f"[BLIND DETECT] {nozzle_id}: {'Yes' if has_blind else 'No'}")
 
             blind_map[nozzle_id] = "Yes" if has_blind else "No"
             current_block = []
