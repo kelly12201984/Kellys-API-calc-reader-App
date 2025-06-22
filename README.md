@@ -39,7 +39,7 @@ TankSnip is just the beginning. Planned enhancements include:
 # Clone the repo
 git clone https://github.com/kelly12201984/Kellys-API-calc-reader-App.git
 
-cd Kellys-API-calc-reader-App
+cd TankSnip-App
 
 # (Optional) Create a virtual environment
 python -m venv venv
