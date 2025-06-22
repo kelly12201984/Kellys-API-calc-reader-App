@@ -169,66 +169,89 @@ def get_nozzle_blind_flags(text):
 
 
 def extract_nozzles(text):
+    nozzle_pattern = re.compile(
+        r"NOZZLE Description\s*:\s*(\d+) in SCH ?(\d+)[A-Z]* TYPE ([A-Z]+)",
+        re.IGNORECASE,
+    )
+    repad_required_pattern = re.compile(r"No Reinforcement Pad required", re.IGNORECASE)
+    repad_od_pattern = re.compile(r"Repad\s+OD\s*=\s*(\d+)", re.IGNORECASE)
+    repad_thk_pattern = re.compile(r"t_rpr\s*=\s*(0?\.\d+)\s*in", re.IGNORECASE)
+
+    lines = text.splitlines()
+    nozzle_blocks = []
+    current_block = []
+    in_nozzle_block = False
+
+    for line in lines:
+        if "Shell Nozzle: Nozzle-" in line:
+            if current_block:
+                nozzle_blocks.append(current_block)
+                current_block = []
+            in_nozzle_block = True
+        if in_nozzle_block:
+            current_block.append(line.strip())
+            if line.strip() == "":
+                nozzle_blocks.append(current_block)
+                current_block = []
+                in_nozzle_block = False
+    if current_block:
+        nozzle_blocks.append(current_block)
+
+    # Get blind flags from plan/elevation views
     blind_flags = get_nozzle_blind_flags(text)
 
-    # Match both Roof and Shell nozzle blocks
-    nozzle_blocks = re.findall(
-        r"((Roof|Shell) Nozzle: (Nozzle-\d+).*?)(?=(Roof|Shell) Nozzle:|Roof Manway:|$)",
-        text,
-        re.DOTALL,
+    nozzle_counts = defaultdict(
+        lambda: {"qty": 0, "blind": 0, "repads": [], "repad_thk": []}
     )
-    nozzle_data = {}
 
-    for full_block, _, nozzle_id, *_ in nozzle_blocks:
-        size_match = re.search(
-            r"NOZZLE Description\s*:\s*(\d+) in SCH (\d+)[\S]* TYPE (\w+)", full_block
-        )
-        if not size_match:
+    for block in nozzle_blocks:
+        block_text = " ".join(block)
+        desc_match = nozzle_pattern.search(block_text)
+        if not desc_match:
             continue
-        size, sch, typ = size_match.groups()
 
-        # Check repad logic
-        has_repad_text = "Reinforcement Pad is required" in full_block
-        t_rpr_match = re.search(r"t_rpr\s*=\s*([\d.]+)\s*in", full_block)
-        t_rpr_val = float(t_rpr_match.group(1)) if t_rpr_match else 0
-        repad_required = has_repad_text and t_rpr_val > 0
+        size, sch, nozzle_type = desc_match.groups()
+        size += '"'  # Format like 2"
+        repad_required = "No" if repad_required_pattern.search(block_text) else "Yes"
 
-        repad_od = re.search(r"Repad Size \(OD\) Must be = (\d+\.?\d*) in", full_block)
+        # Determine which nozzle ID this is (e.g., Nozzle-0002)
+        nozzle_id_match = re.search(r"Nozzle-(\d{4})", block_text)
+        nozzle_id = f"Nozzle-{nozzle_id_match.group(1)}" if nozzle_id_match else None
+        has_blind = blind_flags.get(nozzle_id, "No") if nozzle_id else "No"
 
-        key = (size, sch, typ, blind_flags.get(nozzle_id, "No"))
+        key = (size, sch, nozzle_type)
 
-        if key not in nozzle_data:
-            nozzle_data[key] = {
-                "QTY": 0,
-                "Repad Required": "No",
-                "Repad OD": "",
-                "Repad Thickness": "",
-            }
+        nozzle_counts[key]["qty"] += 1
+        if has_blind == "Yes":
+            nozzle_counts[key]["blind"] += 1
+        if repad_required == "Yes":
+            repad_od_match = repad_od_pattern.search(block_text)
+            repad_thk_match = repad_thk_pattern.search(block_text)
+            repad_od = repad_od_match.group(1) if repad_od_match else "0"
+            repad_thk = repad_thk_match.group(1) if repad_thk_match else "0"
+            nozzle_counts[key]["repads"].append(repad_od)
+            nozzle_counts[key]["repad_thk"].append(repad_thk)
 
-        nozzle_data[key]["QTY"] += 1
+    output = []
+    for (size, sch, nozzle_type), data in nozzle_counts.items():
+        repad_required = "Yes" if data["repads"] else "No"
+        repad_od = max(map(int, data["repads"])) if data["repads"] else ""
+        repad_thk = max(map(float, data["repad_thk"])) if data["repad_thk"] else ""
 
-        if repad_required:
-            nozzle_data[key]["Repad Required"] = "Yes"
-            nozzle_data[key]["Repad OD"] = repad_od.group(1) if repad_od else ""
-            nozzle_data[key]["Repad Thickness"] = f"{t_rpr_val:.4f}"
-
-    # Format for table
-    results = []
-    for (size, sch, typ, blind), info in nozzle_data.items():
-        results.append(
+        output.append(
             {
-                "QTY": info["QTY"],
-                "Size": f'{size}"',
+                "QTY": data["qty"],
+                "Size": size,
                 "SCH": sch,
-                "Type": typ,
-                "With Blind": blind,
-                "Repad Required": info["Repad Required"],
-                "Repad OD (in)": info["Repad OD"],
-                "Repad Thickness (in)": info["Repad Thickness"],
+                "Type": nozzle_type,
+                "With Blind": data["blind"],
+                "Repad Required": repad_required,
+                "Repad OD (in)": repad_od,
+                "Repad Thickness (in)": repad_thk,
             }
         )
 
-    return results
+    return output
 
 
 def extract_manways(text):
