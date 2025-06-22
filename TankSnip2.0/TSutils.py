@@ -148,12 +148,15 @@ def get_nozzle_blind_flags(text):
 
         current_block.append(stripped)
 
-        # End of a nozzle entry
-        nozzle_id_match = re.match(r"Nozzle-\d{4}", stripped)
-        if nozzle_id_match:
-            nozzle_id = nozzle_id_match.group()
+        # Match line like: 0002 NOZZLE
+        nozzle_label_match = re.match(r"^(\d{4})\s+NOZZLE$", stripped.upper())
+        if nozzle_label_match:
+            nozzle_number = nozzle_label_match.group(1)
+            nozzle_id = f"Nozzle-{nozzle_number}"
+
             block_text = " ".join(current_block).upper()
             has_blind = "W/ BLIND" in block_text
+
             blind_map[nozzle_id] = "Yes" if has_blind else "No"
             current_block = []
 
