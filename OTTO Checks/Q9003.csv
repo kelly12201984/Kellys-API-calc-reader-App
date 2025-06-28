@@ -1,0 +1,40 @@
+Field,Value
+Quotation No,Q9003
+Project ID,Not found
+Design Standard,"API-650 13th Edition Errata 1, 2021"
+Annexes Used,"E, J, S"
+Internal Pressure,0 psi or 0 inh2o
+External Pressure,-0 psi or -0 inh2o
+Tank Diameter,10
+Outside Diameter,10.0313
+Inside Diameter,10
+Shell Height,17
+Standard Gravity (SG),1
+Liquid Level,17
+Design Temperature,100 ºF
+MDMT,(Minimum Design Metal Temperature) = -20 ºF
+Roof Live Load,20 psf
+Wind Speed,109 mph
+Shell Course 1 Thickness,0.1875 in
+Shell Course 2 Thickness,0.1875 in
+Shell Course 3 Thickness,0.1875 in
+Shell Course 4 Thickness,0.1875 in
+Seismic Design,"0.121, 0.049"
+Shell - Size,"60, 48, 48, 48"
+Shell - Quantity,4
+Roof Type,Self Supported Conical Roof
+Roof Material,A240-304
+Roof Thickness,0.1875 in
+Bottom Material,A240-304
+Bottom Thickness,0.1875 in
+Rim Angle Material,A240-304
+Rim Angle Size,L2x2x1/4
+Anchors Quantity,4
+Anchors Size,1 in
+Anchors Material,A240-304
+Top Plate Thickness (in),0.375
+Top Plate Size,"6, 8"
+Anchor Chair Quantity,4
+Vertical Plate Quantity,8
+Vertical Plate Size,"8, 12"
+Vertical Plate Thickness,0.5
