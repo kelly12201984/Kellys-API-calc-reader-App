@@ -7,7 +7,8 @@ from TSutils import extract_specs, extract_nozzles, extract_manways
 
 st.set_page_config(page_title="Tank Spec Reader")
 
-st.title("📄 API-650 Tank Spec Reader")
+st.image("https://raw.githubusercontent.com/kelly12201984/TankSnip-App/main/TankSnip2.0/TankSnip_Logo2.png", width=220)
+st.title("📄 TankSnip: API-650 Tank Spec Reader")
 st.markdown(
     "Toss in your tank calculation PDF and I'll get those key details you need."
 )
